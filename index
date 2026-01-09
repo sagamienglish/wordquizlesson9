@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英単語射的 (Lesson 9)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=M_PLUS_Rounded_1c:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #1a1a2e; /* 夜空の色 */
+            background-image: radial-gradient(#2d2d44 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 和風フォント */
+        .japanese-font {
+            font-family: 'Reggae One', cursive;
+        }
+
+        /* 提灯のアニメーション */
+        @keyframes swing {
+            0% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+            100% { transform: rotate(-5deg); }
+        }
+        .lantern {
+            animation: swing 3s infinite ease-in-out;
+            transform-origin: top center;
+        }
+
+        /* ターゲット（木の札） */
+        .target-card {
+            background: #e6b422; /* 金色っぽい木 */
+            background: linear-gradient(to bottom, #f3d060, #c49a03);
+            border: 2px solid #5c4033;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: absolute;
+            transition: transform 0.2s, opacity 0.2s;
+            white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            width: 160px; 
+            height: 90px;
+            overflow: hidden;
+        }
+        .target-card::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            width: 20px;
+            height: 20px;
+            background-color: #d1d5db; /* 紐の色 */
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        /* 弾のアニメーション */
+        .bullet {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #fff, 0 0 20px #ff00de;
+            z-index: 100; 
+            pointer-events: none;
+            transition: all 0.4s linear; /* 等速直線運動の方が狙ってる感が出る */
+        }
+
+        /* 破壊エフェクト（パーティクル） */
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 110;
+        }
+
+        /* 入力エリアのスタイル */
+        .wood-panel {
+            background-color: #8b5a2b;
+            background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 4px);
+            border-top: 4px solid #5c3a1e;
+        }
+        
+        /* 音声認識中の波形アニメーション */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+        }
+        .listening {
+            animation: pulse-ring 1.5s infinite;
+            background-color: #ff5252 !important;
+        }
+
+        /* 奥行き感を出すための背景グラデーション調整 */
+        .depth-overlay {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%);
+            pointer-events: none;
+        }
+        
+        /* 長い日本語のフォントサイズ調整 */
+        .text-adjust { font-size: 1.1rem; }
+        .text-adjust-small { font-size: 0.9rem; }
+        .text-adjust-tiny { font-size: 0.75rem; }
+
+        /* 大砲（銃）のデザイン */
+        #cannon-base {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            background: #4a4a4a;
+            border-radius: 50% 50% 0 0;
+            z-index: 40;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+        }
+        #cannon-barrel-wrapper {
+            position: absolute;
+            bottom: 20px; /* 大砲の回転軸 */
+            left: 50%;
+            width: 0;
+            height: 0;
+            z-index: 39;
+            transition: transform 0.1s ease-out;
+        }
+        #cannon-barrel {
+            position: absolute;
+            bottom: 0;
+            left: -12px;
+            width: 24px;
+            height: 80px;
+            background: linear-gradient(90deg, #333, #666, #333);
+            border: 2px solid #222;
+            border-radius: 4px 4px 0 0;
+            transform-origin: center bottom;
+        }
+        #start-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 9999;
+        }
+        
+        /* BGMボタンスタイル */
+        .bgm-btn-on { @apply text-yellow-400 border-yellow-400; }
+        .bgm-btn-off { @apply text-gray-500 border-gray-500; }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-white">
+
+    <!-- ヘッダー -->
+    <div class="relative z-10 bg-opacity-80 bg-black pt-2 pb-4 shadow-lg border-b-4 border-red-800">
+        <!-- 提灯装飾 -->
+        <div class="absolute top-0 left-0 w-full flex justify-around pointer-events-none -mt-2">
+            <div class="lantern w-12 h-16 bg-red-600 rounded-lg border-t-8 border-b-8 border-black flex items-center justify-center shadow-lg"><span class="text-black font-bold text-xl japanese-font">祭</span></div>
+            <div class="lantern w-12 h-16 bg-white rounded-lg border-t-8 border-b-8 border-black flex items-center justify-center shadow-lg animation-delay-500"><span class="text-red-600 font-bold text-xl japanese-font">射</span></div>
+            <div class="lantern w-12 h-16 bg-red-600 rounded-lg border-t-8 border-b-8 border-black flex items-center justify-center shadow-lg animation-delay-1000"><span class="text-black font-bold text-xl japanese-font">的</span></div>
+            <div class="lantern w-12 h-16 bg-white rounded-lg border-t-8 border-b-8 border-black flex items-center justify-center shadow-lg animation-delay-1500"><span class="text-red-600 font-bold text-xl japanese-font">英</span></div>
+        </div>
+
+        <div class="container mx-auto px-4 mt-12 grid grid-cols-3 items-end relative">
+            <!-- スコア -->
+            <div class="text-left">
+                <div class="text-sm text-gray-400">Score</div>
+                <div class="text-3xl font-bold text-yellow-400 font-mono" id="score">0</div>
+            </div>
+            
+            <!-- タイトル & メッセージ -->
+            <div class="text-center flex flex-col items-center justify-end">
+                <h1 class="text-xl font-bold japanese-font tracking-widest text-red-100 drop-shadow-md whitespace-nowrap">Lesson 9</h1>
+                <div class="text-sm text-yellow-200 h-6 leading-6 font-bold truncate w-full" id="game-message"></div>
+            </div>
+
+            <!-- 時間 & BGMボタン -->
+            <div class="text-right flex flex-col items-end justify-end">
+                <div class="mb-1 hidden md:block">
+                     <button id="bgm-toggle" class="border-2 rounded-full px-2 py-0.5 text-xs font-bold transition-colors bgm-btn-off" onclick="toggleBGM()">
+                        🎵 BGM OFF
+                    </button>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-400 mr-1">Time</span>
+                    <span class="text-3xl font-bold text-white font-mono" id="time">60</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- スマホ用BGMスイッチ (絶対配置) -->
+        <div class="absolute top-2 right-2 md:hidden">
+             <button id="bgm-toggle-mobile" class="border rounded-full p-1 text-xs transition-colors bgm-btn-off" onclick="toggleBGM()">🎵</button>
+        </div>
+    </div>
+
+    <!-- ゲームエリア -->
+    <div id="game-area" class="flex-grow relative overflow-hidden cursor-crosshair bg-gray-900">
+        <!-- 奥行きシャドウ -->
+        <div class="absolute inset-0 depth-overlay z-0"></div>
+
+        <!-- 背景の棚 (位置調整済み) -->
+        <div class="absolute inset-x-0 top-[25%] h-1 bg-yellow-900 shadow-md opacity-40 z-0"></div> <!-- 奥 -->
+        <div class="absolute inset-x-0 top-[45%] h-2 bg-yellow-900 shadow-md opacity-50 z-0"></div> <!-- 中 -->
+        <div class="absolute inset-x-0 top-[65%] h-3 bg-yellow-900 shadow-md opacity-60 z-0"></div> <!-- 手前 -->
+        
+        <!-- 大砲 -->
+        <div id="cannon-container" class="absolute bottom-0 left-1/2 transform -translate-x-1/2 pointer-events-none z-40">
+             <div id="cannon-barrel-wrapper">
+                 <div id="cannon-barrel"></div>
+             </div>
+             <div id="cannon-base" class="flex items-center justify-center border-t-4 border-gray-600">
+                 <span class="text-yellow-500 font-bold text-2xl japanese-font mt-2">祭</span>
+             </div>
+        </div>
+
+        <div id="targets-container" class="absolute inset-0 pointer-events-none z-10"></div>
+        <div id="effects-container" class="absolute inset-0 pointer-events-none z-50"></div>
+    </div>
+
+    <!-- フッター -->
+    <div class="wood-panel p-4 pb-6 relative z-20">
+        <div class="max-w-3xl mx-auto flex items-center gap-2">
+            <div class="flex-grow relative">
+                <input type="text" id="answer-input" autocomplete="off" placeholder="ここに英語を入力してEnter" 
+                    class="w-full bg-white text-gray-900 px-4 py-3 rounded-lg border-4 border-gray-300 focus:border-red-500 focus:outline-none text-xl font-bold shadow-inner"
+                    onkeydown="checkEnter(event)">
+                <button onclick="checkAnswer()" class="absolute right-2 top-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white rounded px-4 font-bold md:hidden">
+                    撃つ
+                </button>
+            </div>
+            <button id="mic-btn" onclick="toggleSpeech()" class="bg-gray-700 hover:bg-gray-600 text-white p-3 rounded-full shadow-lg transition-all border-2 border-gray-500 flex-shrink-0" title="音声入力">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+            </button>
+        </div>
+        <div class="text-center mt-2 text-xs text-yellow-100 opacity-70">
+            音声認識: <span id="speech-status">OFF</span>
+        </div>
+    </div>
+    
+    <!-- スタート/リザルトオーバーレイ -->
+    <div id="start-overlay" class="bg-black bg-opacity-80 flex flex-col items-center justify-center z-[9999]">
+        <h2 class="text-4xl md:text-6xl font-bold text-yellow-400 japanese-font mb-4 drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">射的開始</h2>
+        <p class="mb-4 text-gray-300 text-center px-4">日本語を英語にして撃ち落とせ！<br>Lesson 9 Part 1~3</p>
+        
+        <div class="flex flex-col gap-4 w-full max-w-sm px-4">
+            <!-- 設定：出題範囲 -->
+            <div class="flex flex-col">
+                 <label class="text-sm text-gray-400 mb-1">出題範囲</label>
+                 <select id="part-selector" class="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2 text-lg">
+                     <option value="part1">Lesson 9 Part 1</option>
+                     <option value="part2">Lesson 9 Part 2</option>
+                     <option value="part3">Lesson 9 Part 3</option>
+                     <option value="all" selected>Lesson 9 すべて</option>
+                 </select>
+            </div>
+            
+            <!-- 設定：モード選択 -->
+            <div class="flex flex-col">
+                <label class="text-sm text-gray-400 mb-1">モード</label>
+                <div class="flex gap-2">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="game-mode" value="ja_to_en" checked class="hidden peer">
+                        <div class="border border-gray-500 rounded p-2 text-center peer-checked:bg-red-900 peer-checked:border-red-500 peer-checked:text-white text-gray-400 hover:bg-gray-800 transition">
+                            <div class="font-bold">翻訳 (日→英)</div>
+                            <div class="text-xs">標準モード</div>
+                        </div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="game-mode" value="en_to_en" class="hidden peer">
+                        <div class="border border-gray-500 rounded p-2 text-center peer-checked:bg-blue-900 peer-checked:border-blue-500 peer-checked:text-white text-gray-400 hover:bg-gray-800 transition">
+                            <div class="font-bold">視写 (英→英)</div>
+                            <div class="text-xs">初心者向け</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-full text-xl shadow-[0_4px_0_rgb(153,27,27)] active:shadow-none active:translate-y-1 transition japanese-font">
+                ゲームスタート
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- ゲームデータ ---
+        const wordData = {
+            part1: [
+                { ja: 'ニュースキャスター', en: 'newscaster' }, { ja: '観衆', en: 'spectator' },
+                { ja: 'じっと見る', en: 'stare' }, { ja: '画面, スクリーン', en: 'screen' },
+                { ja: '会場', en: 'venue' }, { ja: 'ロケットエンジンの', en: 'rocket-powered' },
+                { ja: '参加する', en: 'participate' }, { ja: '（会社・組織など）を設立する', en: 'set up' },
+                { ja: '～を応援する', en: 'cheer for' }, { ja: '競う', en: 'compete' }
+            ],
+            part2: [
+                { ja: '…の略語で', en: 'short for' }, { ja: '…を指す', en: 'refer to' },
+                { ja: '組織された', en: 'organized' }, { ja: '用語', en: 'term' },
+                { ja: '人気', en: 'popularity' }, { ja: '公式の', en: 'official' },
+                { ja: '急激に', en: 'sharply' }, { ja: '奨学金', en: 'scholarship' },
+                { ja: '大会', en: 'competition' }, { ja: '委員会', en: 'committee' }
+            ],
+            part3: [
+                { ja: '…を思いつく', en: 'think of' }, { ja: 'コメンテーター', en: 'commentator' },
+                { ja: '身体的な', en: 'physical' }, { ja: '精神的な', en: 'mental' },
+                { ja: '素早い', en: 'quick' }, { ja: '反応', en: 'response' },
+                { ja: '集中', en: 'concentration' }, { ja: '戦略', en: 'strategy' },
+                { ja: 'ビザ', en: 'visa' }, { ja: '利点', en: 'advantage' },
+                { ja: '…に関係なく', en: 'regardless of' }, { ja: 'チームワーク', en: 'teamwork' },
+                { ja: '…だけれども', en: 'although' }, { ja: '心配して, (恐れて)', en: 'afraid' },
+                { ja: '無駄', en: 'waste' }, { ja: '政府', en: 'government' },
+                { ja: '認める', en: 'recognize' }, { ja: '力', en: 'strength' }
+            ]
+        };
+
+        // --- 変数 ---
+        let currentWords = [];
+        let targets = [];
+        let score = 0;
+        let timeLeft = 60;
+        let gameInterval;
+        let spawnInterval;
+        let timerInterval;
+        let isGameRunning = false;
+        let speechRecognition;
+        let isListening = false;
+        let isBgmOn = false;
+        let bgmInterval;
+        let gameMode = 'ja_to_en'; 
+        
+        // DOM要素
+        const gameArea = document.getElementById('game-area');
+        const targetsContainer = document.getElementById('targets-container');
+        const effectsContainer = document.getElementById('effects-container');
+        const input = document.getElementById('answer-input');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const messageEl = document.getElementById('game-message');
+        const micBtn = document.getElementById('mic-btn');
+        const speechStatus = document.getElementById('speech-status');
+        const cannonWrapper = document.getElementById('cannon-barrel-wrapper');
+
+        // 音声認識
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            speechRecognition = new SpeechRecognition();
+            speechRecognition.lang = 'en-US'; 
+            speechRecognition.continuous = true; 
+            speechRecognition.interimResults = false;
+            speechRecognition.onresult = (event) => {
+                const last = event.results.length - 1;
+                const transcript = event.results[last][0].transcript.trim().toLowerCase().replace(/[.?]/g, '');
+                input.value = transcript;
+                checkAnswer(true); 
+                messageEl.innerText = `音声認識: ${transcript}`;
+                messageEl.classList.remove('text-yellow-200');
+                messageEl.classList.add('text-green-300');
+                setTimeout(() => {
+                    if(messageEl.innerText.includes(transcript)) {
+                        messageEl.innerText = '';
+                        messageEl.classList.add('text-yellow-200');
+                        messageEl.classList.remove('text-green-300');
+                    }
+                }, 2000);
+            };
+            speechRecognition.onend = () => {
+                if (isListening && isGameRunning) speechRecognition.start();
+                else { isListening = false; updateMicUI(); }
+            };
+            speechRecognition.onerror = (event) => {
+                if(event.error === 'not-allowed') {
+                    showToast("マイクの使用が許可されていません");
+                    isListening = false;
+                    updateMicUI();
+                }
+            };
+        } else {
+            micBtn.style.display = 'none';
+            speechStatus.innerText = "非対応ブラウザ";
+        }
+
+        function toggleSpeech() {
+            if (!speechRecognition) return;
+            if (isListening) { isListening = false; speechRecognition.stop(); }
+            else { isListening = true; speechRecognition.start(); }
+            updateMicUI();
+        }
+
+        function updateMicUI() {
+            if (isListening) {
+                micBtn.classList.add('listening');
+                speechStatus.innerText = "ON (話してください)";
+                speechStatus.classList.add('text-red-400');
+            } else {
+                micBtn.classList.remove('listening');
+                speechStatus.innerText = "OFF";
+                speechStatus.classList.remove('text-red-400');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded pointer-events-none transition-opacity duration-500 z-[100]';
+            toast.innerText = msg;
+            gameArea.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 1500);
+        }
+
+        // --- オーディオ (お祭り風BGMの改善) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function toggleBGM() {
+            isBgmOn = !isBgmOn;
+            const btn = document.getElementById('bgm-toggle');
+            const btnMobile = document.getElementById('bgm-toggle-mobile');
+            
+            if (isBgmOn) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                btn.innerText = "🎵 BGM ON";
+                btn.classList.remove('bgm-btn-off'); btn.classList.add('bgm-btn-on');
+                btnMobile.classList.remove('bgm-btn-off'); btnMobile.classList.add('bgm-btn-on');
+                startBGM();
+            } else {
+                btn.innerText = "🎵 BGM OFF";
+                btn.classList.remove('bgm-btn-on'); btn.classList.add('bgm-btn-off');
+                btnMobile.classList.remove('bgm-btn-on'); btnMobile.classList.add('bgm-btn-off');
+                stopBGM();
+            }
+        }
+
+        function startBGM() {
+            // お祭りリズム（テンテケテンテケ）
+            let beat = 0;
+            const tempo = 130; // 16分音符間隔(ms)
+            
+            // ピーヒャララ旋律 (お祭り風ペンタトニック)
+            // A=ラ, B=シ, D=レ, E=ミ, F#=ファ#
+            // High pitch for Shinobue: A5(880), B5(987), D6(1175), E6(1318)
+            const melodyPattern = [
+                // Phrase 1: ピーヒャラ ピーヒャラ
+                1175, 987, 880, 0,  1175, 987, 880, 0,
+                // Phrase 2: テンツク テンツク
+                1175, 1175, 987, 987, 880, 0, 880, 0,
+                // Phrase 3: パッパッ パラパ
+                1318, 0, 1318, 0, 1175, 987, 880, 0,
+                // Phrase 4: ピーヒャララー
+                987, 1175, 987, 880, 880, 0, 0, 0
+            ];
+
+            clearInterval(bgmInterval);
+            bgmInterval = setInterval(() => {
+                const t = audioCtx.currentTime;
+                const step = beat % 32;
+
+                // 太鼓 (Drums)
+                // ドン(低) カッ(高)
+                // リズム: ドン(0) ウ(1) ドン(2) ウ(3) ドン(4) カ(5) ラ(6) カ(7)
+                const drumRhythm = [
+                    1, 0, 1, 0, 1, 2, 0, 2,  // Don - Don - Don Ka - Ka
+                    1, 0, 2, 0, 1, 0, 2, 0,  // Don - Ka - Don - Ka
+                    1, 0, 1, 0, 1, 2, 0, 2,
+                    1, 1, 2, 2, 1, 0, 0, 0   // DonDon KaKa Don (end)
+                ];
+                
+                const d = drumRhythm[step];
+                if (d === 1) playTaikoDon(t);
+                if (d === 2) playTaikoKa(t);
+
+                // 篠笛 (Flute)
+                const note = melodyPattern[step];
+                if (note) playShinobue(t, note, 0.15);
+
+                beat++;
+            }, tempo);
+        }
+
+        function stopBGM() { clearInterval(bgmInterval); }
+
+        function playTaikoDon(time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // ドン: 低いサイン波 + ピッチダウン
+            osc.frequency.setValueAtTime(120, time);
+            osc.frequency.exponentialRampToValueAtTime(60, time + 0.15);
+            
+            gain.gain.setValueAtTime(0.6, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+            
+            // 少しノイズを混ぜて皮の質感
+            addNoiseBurst(time, 0.05, 0.1);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + 0.2);
+        }
+
+        function playTaikoKa(time) {
+            // カッ: 短い高めの音 + ノイズ
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, time);
+            
+            gain.gain.setValueAtTime(0.1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+
+            addNoiseBurst(time, 0.05, 0.2); // クリック音強め
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + 0.05);
+        }
+
+        function addNoiseBurst(time, duration, vol) {
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(vol, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            
+            noise.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start(time);
+        }
+
+        function playShinobue(time, freq, dur) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+
+            // 篠笛: サイン波 + 倍音成分（のこぎり波を少し混ぜる）
+            // ここではシンプルにサイン波にビブラート
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, time);
+
+            // ビブラート (LFO)
+            lfo.frequency.value = 5; // 5Hz
+            lfoGain.gain.value = 5; // 深さ
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            lfo.start(time);
+
+            // エンベロープ: 少しふわっと立ち上がる
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.1, time + 0.05);
+            gain.gain.linearRampToValueAtTime(0, time + dur); // リリース
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + dur);
+        }
+
+        // --- 効果音 ---
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t = audioCtx.currentTime;
+            
+            if (type === 'hit') {
+                // 花火音
+                addNoiseBurst(t, 0.4, 0.6);
+            } else {
+                // ミス音 (気の抜けた笛)
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, t);
+                osc.frequency.linearRampToValueAtTime(100, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.2);
+            }
+        }
+
+        // --- ゲームロジック ---
+
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const part = document.getElementById('part-selector').value;
+            const modeRadios = document.getElementsByName('game-mode');
+            for(const radio of modeRadios) if(radio.checked) gameMode = radio.value;
+
+            if (part === 'all') currentWords = [...wordData.part1, ...wordData.part2, ...wordData.part3];
+            else currentWords = [...wordData[part]];
+            
+            score = 0;
+            timeLeft = 60;
+            targets = [];
+            targetsContainer.innerHTML = '';
+            effectsContainer.innerHTML = '';
+            scoreEl.innerText = score;
+            timeEl.innerText = timeLeft;
+            input.value = '';
+            input.focus();
+            cannonWrapper.style.transform = 'rotate(0deg)';
+            document.getElementById('start-overlay').style.display = 'none';
+            isGameRunning = true;
+            messageEl.innerText = "";
+
+            clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 20); 
+            
+            clearInterval(spawnInterval);
+            const spawnRate = 4000; 
+            spawnInterval = setInterval(spawnTarget, spawnRate);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timeEl.innerText = timeLeft;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+            
+            if(isBgmOn) startBGM();
+        }
+
+        function getRank(score) {
+            if (score >= 1500) return "神業スナイパー 👑✨";
+            if (score >= 1000) return "射的マスター 🎯🔥";
+            if (score >= 500) return "お祭り名人 🏮👺";
+            if (score >= 200) return "期待の新人 🔫😼";
+            return "見習いハンター 🥚🐣";
+        }
+
+        function endGame() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(spawnInterval);
+            clearInterval(timerInterval);
+            if(isListening) toggleSpeech();
+            stopBGM();
+            const rank = getRank(score);
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.display = 'flex';
+            const h2 = overlay.querySelector('h2');
+            h2.innerText = "終了！";
+            const p = overlay.querySelector('p');
+            p.innerHTML = `
+                <div class="text-xl mb-2">スコア: <span class="text-yellow-400 text-3xl font-bold">${score}</span></div>
+                <div class="text-2xl mt-2 mb-4 bg-red-900 bg-opacity-50 px-6 py-2 rounded-lg border border-red-500 inline-block">
+                    称号: <span class="text-white font-bold japanese-font">${rank}</span>
+                </div>
+            `;
+            const btn = overlay.querySelector('button');
+            btn.innerText = "もう一度遊ぶ";
+        }
+
+        function spawnTarget() {
+            if (!isGameRunning) return;
+            const wordData = currentWords[Math.floor(Math.random() * currentWords.length)];
+            const laneConfigs = [
+                { top: '20%', scale: 0.7, zIndex: 1, speedRatio: 0.8 },
+                { top: '40%', scale: 0.85, zIndex: 5, speedRatio: 0.9 },
+                { top: '60%', scale: 1.0, zIndex: 10, speedRatio: 1.0 }
+            ];
+            const config = laneConfigs[Math.floor(Math.random() * laneConfigs.length)];
+            const id = Date.now() + Math.random();
+            const el = document.createElement('div');
+            el.className = 'target-card px-2 py-1'; 
+            el.style.top = config.top;
+            el.style.left = '100%'; 
+            el.style.transform = `scale(${config.scale})`;
+            el.style.zIndex = config.zIndex;
+            
+            let mainText, subText, fontClass;
+            if (gameMode === 'en_to_en') {
+                mainText = wordData.en;
+                subText = wordData.ja; 
+                fontClass = "font-bold text-blue-900 mb-1 leading-tight font-sans"; 
+            } else {
+                mainText = wordData.ja;
+                subText = wordData.en;
+                fontClass = "font-bold text-red-900 japanese-font mb-1 leading-tight";
+            }
+            const len = mainText.length;
+            if (len > 12) fontClass += " text-adjust-tiny";
+            else if (len > 8) fontClass += " text-adjust-small";
+            else fontClass += " text-xl";
+            
+            el.innerHTML = `<div class="${fontClass}">${mainText}</div><div class="text-xs text-yellow-900 opacity-0 debug-hint">${subText}</div>`;
+            targetsContainer.appendChild(el);
+
+            const baseSpeed = 0.16;
+            targets.push({
+                id: id, el: el, word: wordData, x: 100, 
+                speed: baseSpeed * config.speedRatio, scale: config.scale, zIndex: config.zIndex
+            });
+        }
+
+        function updateGame() {
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                t.x -= t.speed;
+                t.el.style.left = t.x + '%';
+                if (t.x < -20) { t.el.remove(); targets.splice(i, 1); }
+            }
+        }
+
+        function checkEnter(e) { if (e.key === 'Enter') checkAnswer(); }
+
+        function checkAnswer(isVoice = false) {
+            if (!isGameRunning) return;
+            const val = input.value.trim().toLowerCase();
+            if (!val) return;
+            let hitIndex = -1, leftMostX = 1000;
+            for (let i = 0; i < targets.length; i++) {
+                if (targets[i].word.en.toLowerCase() === val) {
+                    if (targets[i].x < leftMostX) { leftMostX = targets[i].x; hitIndex = i; }
+                }
+            }
+            if (hitIndex !== -1) {
+                const target = targets[hitIndex];
+                
+                // --- 予測射撃の計算 ---
+                // 弾の到達時間: 400ms (CSS transition)
+                // ゲームループ: 20ms間隔
+                // 弾が着くまでに進むフレーム数: 20 frames
+                // 進む距離(%): target.speed * 20
+                // 画面幅(px): window.innerWidth
+                const travelTimeFrames = 20; // 400ms / 20ms
+                const predictedMovePercent = target.speed * travelTimeFrames;
+                const futureXPercent = target.x - predictedMovePercent;
+                // ピクセルに変換 (window幅ベース)
+                const futureXPixel = (futureXPercent / 100) * window.innerWidth;
+                const rect = target.el.getBoundingClientRect(); // Y座標用
+                const targetY = rect.top + rect.height / 2;
+
+                // 大砲を向ける (未来位置へ)
+                rotateCannon(futureXPixel, targetY);
+
+                // 撃つ (未来位置へ)
+                shootBullet(futureXPixel, targetY); 
+                
+                setTimeout(() => {
+                    createExplosion(target.el);
+                    createHitEffect(target.el);
+                    target.el.remove();
+                    targets.splice(hitIndex, 1);
+                    score += 100;
+                    scoreEl.innerText = score;
+                    playSound('hit');
+                }, 400); 
+                input.value = ''; 
+                input.classList.remove('border-red-500');
+            } else {
+                shootMissBullet(); 
+                if (!isVoice) {
+                    input.classList.add('border-red-500');
+                    setTimeout(() => input.classList.remove('border-red-500'), 300);
+                    playSound('miss');
+                }
+                input.value = ''; 
+            }
+        }
+
+        function rotateCannon(targetX, targetY) {
+             const cannonRect = document.getElementById('cannon-base').getBoundingClientRect();
+             const cannonX = cannonRect.left + cannonRect.width / 2;
+             const cannonY = cannonRect.bottom; 
+             const dx = targetX - cannonX;
+             const dy = targetY - cannonY;
+             const angleRad = Math.atan2(dy, dx);
+             const angleDeg = (angleRad * 180 / Math.PI) + 90;
+             cannonWrapper.style.transform = `rotate(${angleDeg}deg)`;
+        }
+
+        function shootBullet(endX, endY, isMiss = false) {
+            const startX = window.innerWidth / 2;
+            const startY = window.innerHeight - 80; 
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet';
+            effectsContainer.appendChild(bullet);
+            bullet.style.left = startX + 'px';
+            bullet.style.top = startY + 'px';
+            if(isMiss) {
+                bullet.style.opacity = '0.7';
+                bullet.style.boxShadow = '0 0 5px #fff';
+            }
+            requestAnimationFrame(() => {
+                bullet.style.left = endX + 'px';
+                bullet.style.top = endY + 'px';
+                if(isMiss) bullet.style.transform = 'scale(0.2)';
+            });
+            setTimeout(() => { bullet.remove(); }, 400); 
+        }
+
+        function shootMissBullet() {
+            let target = null, minX = 1000;
+            for(let t of targets) { if(t.x < minX && t.x > 0) { minX = t.x; target = t; } }
+            
+            let targetX, targetY;
+            if (target) {
+                const rect = target.el.getBoundingClientRect();
+                targetX = rect.left + rect.width / 2;
+                targetY = rect.top - 80; 
+                rotateCannon(targetX, targetY); // ミスの時もそっちを向く
+            } else {
+                targetX = window.innerWidth / 2;
+                targetY = window.innerHeight / 2 - 100;
+                cannonWrapper.style.transform = `rotate(0deg)`;
+            }
+            shootBullet(targetX, targetY, true);
+        }
+
+        function createHitEffect(targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect japanese-font';
+            effect.innerText = '当たり！'; 
+            effect.style.left = (rect.left + 20) + 'px';
+            effect.style.top = (rect.top - 20) + 'px';
+            effectsContainer.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function createExplosion(targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const colors = ['#ffeb3b', '#ff5252', '#ffffff', '#ffa726'];
+            for(let i=0; i<12; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                p.style.left = cx + 'px';
+                p.style.top = cy + 'px';
+                effectsContainer.appendChild(p);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 30 + Math.random() * 50;
+                const tx = Math.cos(angle) * dist;
+                const ty = Math.sin(angle) * dist;
+                p.animate([
+                    { transform: `translate(0, 0) scale(1)`, opacity: 1 },
+                    { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+                ], { duration: 400 + Math.random() * 200, easing: 'ease-out' }).onfinish = () => p.remove();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Alt') document.querySelectorAll('.debug-hint').forEach(el => el.style.opacity = '1');
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Alt') document.querySelectorAll('.debug-hint').forEach(el => el.style.opacity = '0');
+        });
+    </script>
+</body>
+</html>
