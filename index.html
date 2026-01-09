@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>英単語射的 (Lesson 9)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=M_PLUS_Rounded_1c:wght@400;700&display=swap" rel="stylesheet">
@@ -155,12 +155,22 @@
         /* BGMボタンスタイル */
         .bgm-btn-on { @apply text-yellow-400 border-yellow-400; }
         .bgm-btn-off { @apply text-gray-500 border-gray-500; }
+
+        /* 仮想キーボードのスタイル */
+        .key-btn {
+            @apply bg-gray-700 text-white rounded font-bold shadow active:bg-gray-600 select-none touch-manipulation;
+            height: 40px;
+        }
+        .key-btn:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col text-white">
 
     <!-- ヘッダー -->
-    <div class="relative z-10 bg-opacity-80 bg-black pt-2 pb-4 shadow-lg border-b-4 border-red-800">
+    <div class="relative z-10 bg-opacity-80 bg-black pt-2 pb-4 shadow-lg border-b-4 border-red-800 flex-shrink-0">
         <!-- 提灯装飾 -->
         <div class="absolute top-0 left-0 w-full flex justify-around pointer-events-none -mt-2">
             <div class="lantern w-12 h-16 bg-red-600 rounded-lg border-t-8 border-b-8 border-black flex items-center justify-center shadow-lg"><span class="text-black font-bold text-xl japanese-font">祭</span></div>
@@ -185,8 +195,9 @@
             <!-- 時間 & BGMボタン -->
             <div class="text-right flex flex-col items-end justify-end">
                 <div class="mb-1 hidden md:block">
-                     <button id="bgm-toggle" class="border-2 rounded-full px-2 py-0.5 text-xs font-bold transition-colors bgm-btn-off" onclick="toggleBGM()">
-                        🎵 BGM OFF
+                    <!-- デフォルトONに変更 -->
+                     <button id="bgm-toggle" class="border-2 rounded-full px-2 py-0.5 text-xs font-bold transition-colors bgm-btn-on" onclick="toggleBGM()">
+                        🎵 BGM ON
                     </button>
                 </div>
                 <div>
@@ -198,12 +209,13 @@
         
         <!-- スマホ用BGMスイッチ (絶対配置) -->
         <div class="absolute top-2 right-2 md:hidden">
-             <button id="bgm-toggle-mobile" class="border rounded-full p-1 text-xs transition-colors bgm-btn-off" onclick="toggleBGM()">🎵</button>
+            <!-- デフォルトONに変更 -->
+             <button id="bgm-toggle-mobile" class="border rounded-full p-1 text-xs transition-colors bgm-btn-on" onclick="toggleBGM()">🎵</button>
         </div>
     </div>
 
     <!-- ゲームエリア -->
-    <div id="game-area" class="flex-grow relative overflow-hidden cursor-crosshair bg-gray-900">
+    <div id="game-area" class="flex-grow relative overflow-hidden cursor-crosshair bg-gray-900 min-h-0">
         <!-- 奥行きシャドウ -->
         <div class="absolute inset-0 depth-overlay z-0"></div>
 
@@ -227,13 +239,19 @@
     </div>
 
     <!-- フッター -->
-    <div class="wood-panel p-4 pb-6 relative z-20">
-        <div class="max-w-3xl mx-auto flex items-center gap-2">
-            <div class="flex-grow relative">
-                <input type="text" id="answer-input" autocomplete="off" placeholder="ここに英語を入力してEnter" 
+    <div class="wood-panel p-4 pb-2 relative z-20 flex-shrink-0">
+        <div class="max-w-3xl mx-auto flex items-center gap-2 mb-2">
+            <div class="flex-grow relative flex gap-2">
+                <input type="text" id="answer-input" autocomplete="off" placeholder="ここに英語を入力" 
                     class="w-full bg-white text-gray-900 px-4 py-3 rounded-lg border-4 border-gray-300 focus:border-red-500 focus:outline-none text-xl font-bold shadow-inner"
                     onkeydown="checkEnter(event)">
-                <button onclick="checkAnswer()" class="absolute right-2 top-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white rounded px-4 font-bold md:hidden">
+                
+                <!-- 画面キーボード切り替えボタン -->
+                <button onclick="toggleVirtualKeyboard()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 rounded-lg border-2 border-gray-500 flex items-center justify-center shadow-md active:translate-y-1 transition" title="画面キーボード">
+                    <span class="text-2xl">⌨️</span>
+                </button>
+
+                <button onclick="checkAnswer()" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 font-bold md:hidden shadow-md active:translate-y-1 transition">
                     撃つ
                 </button>
             </div>
@@ -243,8 +261,55 @@
                 </svg>
             </button>
         </div>
-        <div class="text-center mt-2 text-xs text-yellow-100 opacity-70">
+        <div class="text-center mb-2 text-xs text-yellow-100 opacity-70">
             音声認識: <span id="speech-status">OFF</span>
+        </div>
+
+        <!-- 仮想キーボード -->
+        <div id="virtual-keyboard" class="hidden w-full max-w-3xl mx-auto pt-2 pb-1 border-t border-yellow-900/30">
+            <div class="flex flex-col gap-1">
+                <!-- Row 1 -->
+                <div class="flex gap-1 justify-center">
+                    <button class="key-btn w-[9%]" onclick="vKey('q')">Q</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('w')">W</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('e')">E</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('r')">R</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('t')">T</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('y')">Y</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('u')">U</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('i')">I</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('o')">O</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('p')">P</button>
+                </div>
+                <!-- Row 2 -->
+                <div class="flex gap-1 justify-center">
+                    <button class="key-btn w-[9%]" onclick="vKey('a')">A</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('s')">S</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('d')">D</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('f')">F</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('g')">G</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('h')">H</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('j')">J</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('k')">K</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('l')">L</button>
+                </div>
+                <!-- Row 3 -->
+                <div class="flex gap-1 justify-center">
+                    <button class="key-btn w-[12%] bg-gray-600" onclick="vKey('BS')">⌫</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('z')">Z</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('x')">X</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('c')">C</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('v')">V</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('b')">B</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('n')">N</button>
+                    <button class="key-btn w-[9%]" onclick="vKey('m')">M</button>
+                    <button class="key-btn w-[15%] bg-blue-600" onclick="vKey('ENTER')">Enter</button>
+                </div>
+                 <!-- Row 4 -->
+                 <div class="flex gap-1 justify-center">
+                    <button class="key-btn w-[40%]" onclick="vKey(' ')">Space</button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -333,9 +398,10 @@
         let isGameRunning = false;
         let speechRecognition;
         let isListening = false;
-        let isBgmOn = false;
+        let isBgmOn = true; // デフォルトON
         let bgmInterval;
         let gameMode = 'ja_to_en'; 
+        let isVirtualKeyboardOn = false;
         
         // DOM要素
         const gameArea = document.getElementById('game-area');
@@ -418,6 +484,38 @@
             }, 1500);
         }
 
+        // --- 画面キーボード ---
+        function toggleVirtualKeyboard() {
+            isVirtualKeyboardOn = !isVirtualKeyboardOn;
+            const kb = document.getElementById('virtual-keyboard');
+            
+            if (isVirtualKeyboardOn) {
+                kb.classList.remove('hidden');
+                // OSキーボードを出さないためにreadonlyにする
+                input.setAttribute('readonly', 'readonly');
+            } else {
+                kb.classList.add('hidden');
+                input.removeAttribute('readonly');
+            }
+            // レイアウト再計算のためにフォーカスをあえて外す
+            input.blur();
+        }
+
+        function vKey(key) {
+            if (key === 'ENTER') {
+                checkAnswer();
+            } else if (key === 'BS') {
+                input.value = input.value.slice(0, -1);
+            } else {
+                input.value += key;
+            }
+            // 入力中もOSキーボードを出さない
+            if(isVirtualKeyboardOn) {
+                input.focus();
+            }
+        }
+
+
         // --- オーディオ (お祭り風BGMの改善) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
@@ -441,21 +539,13 @@
         }
 
         function startBGM() {
-            // お祭りリズム（テンテケテンテケ）
             let beat = 0;
-            const tempo = 130; // 16分音符間隔(ms)
+            const tempo = 130; 
             
-            // ピーヒャララ旋律 (お祭り風ペンタトニック)
-            // A=ラ, B=シ, D=レ, E=ミ, F#=ファ#
-            // High pitch for Shinobue: A5(880), B5(987), D6(1175), E6(1318)
             const melodyPattern = [
-                // Phrase 1: ピーヒャラ ピーヒャラ
                 1175, 987, 880, 0,  1175, 987, 880, 0,
-                // Phrase 2: テンツク テンツク
                 1175, 1175, 987, 987, 880, 0, 880, 0,
-                // Phrase 3: パッパッ パラパ
                 1318, 0, 1318, 0, 1175, 987, 880, 0,
-                // Phrase 4: ピーヒャララー
                 987, 1175, 987, 880, 880, 0, 0, 0
             ];
 
@@ -464,21 +554,17 @@
                 const t = audioCtx.currentTime;
                 const step = beat % 32;
 
-                // 太鼓 (Drums)
-                // ドン(低) カッ(高)
-                // リズム: ドン(0) ウ(1) ドン(2) ウ(3) ドン(4) カ(5) ラ(6) カ(7)
                 const drumRhythm = [
-                    1, 0, 1, 0, 1, 2, 0, 2,  // Don - Don - Don Ka - Ka
-                    1, 0, 2, 0, 1, 0, 2, 0,  // Don - Ka - Don - Ka
+                    1, 0, 1, 0, 1, 2, 0, 2,  
+                    1, 0, 2, 0, 1, 0, 2, 0,  
                     1, 0, 1, 0, 1, 2, 0, 2,
-                    1, 1, 2, 2, 1, 0, 0, 0   // DonDon KaKa Don (end)
+                    1, 1, 2, 2, 1, 0, 0, 0   
                 ];
                 
                 const d = drumRhythm[step];
                 if (d === 1) playTaikoDon(t);
                 if (d === 2) playTaikoKa(t);
 
-                // 篠笛 (Flute)
                 const note = melodyPattern[step];
                 if (note) playShinobue(t, note, 0.15);
 
@@ -491,17 +577,11 @@
         function playTaikoDon(time) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
-            // ドン: 低いサイン波 + ピッチダウン
             osc.frequency.setValueAtTime(120, time);
             osc.frequency.exponentialRampToValueAtTime(60, time + 0.15);
-            
             gain.gain.setValueAtTime(0.6, time);
             gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-            
-            // 少しノイズを混ぜて皮の質感
             addNoiseBurst(time, 0.05, 0.1);
-
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(time);
@@ -509,17 +589,13 @@
         }
 
         function playTaikoKa(time) {
-            // カッ: 短い高めの音 + ノイズ
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
             osc.frequency.setValueAtTime(400, time);
-            
             gain.gain.setValueAtTime(0.1, time);
             gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-
-            addNoiseBurst(time, 0.05, 0.2); // クリック音強め
-
+            addNoiseBurst(time, 0.05, 0.2); 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(time);
@@ -531,13 +607,11 @@
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            
             const noise = audioCtx.createBufferSource();
             noise.buffer = buffer;
             const gain = audioCtx.createGain();
             gain.gain.setValueAtTime(vol, time);
             gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-            
             noise.connect(gain);
             gain.connect(audioCtx.destination);
             noise.start(time);
@@ -548,24 +622,16 @@
             const gain = audioCtx.createGain();
             const lfo = audioCtx.createOscillator();
             const lfoGain = audioCtx.createGain();
-
-            // 篠笛: サイン波 + 倍音成分（のこぎり波を少し混ぜる）
-            // ここではシンプルにサイン波にビブラート
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, time);
-
-            // ビブラート (LFO)
-            lfo.frequency.value = 5; // 5Hz
-            lfoGain.gain.value = 5; // 深さ
+            lfo.frequency.value = 5; 
+            lfoGain.gain.value = 5; 
             lfo.connect(lfoGain);
             lfoGain.connect(osc.frequency);
             lfo.start(time);
-
-            // エンベロープ: 少しふわっと立ち上がる
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(0.1, time + 0.05);
-            gain.gain.linearRampToValueAtTime(0, time + dur); // リリース
-
+            gain.gain.linearRampToValueAtTime(0, time + dur); 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(time);
@@ -578,10 +644,8 @@
             const t = audioCtx.currentTime;
             
             if (type === 'hit') {
-                // 花火音
                 addNoiseBurst(t, 0.4, 0.6);
             } else {
-                // ミス音 (気の抜けた笛)
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'triangle';
@@ -636,14 +700,23 @@
             }, 1000);
             
             if(isBgmOn) startBGM();
+
+            // もし開始時にキーボードONならreadonly適用
+            if(isVirtualKeyboardOn) input.setAttribute('readonly', 'readonly');
         }
 
         function getRank(score) {
-            if (score >= 1500) return "神業スナイパー 👑✨";
-            if (score >= 1000) return "射的マスター 🎯🔥";
-            if (score >= 500) return "お祭り名人 🏮👺";
-            if (score >= 200) return "期待の新人 🔫😼";
-            return "見習いハンター 🥚🐣";
+            // 称号を10段階に細分化 (Maxスコア約1500点を想定)
+            if (score >= 1500) return "伝説の的屋王 🎆👑";
+            if (score >= 1300) return "奇跡のスナイパー 🎯✨";
+            if (score >= 1100) return "夏祭りの覇者 🏮🦁";
+            if (score >= 900)  return "射的マスター 🔥🔫";
+            if (score >= 700)  return "お祭り名人 👺🏮";
+            if (score >= 600)  return "凄腕ハンター 🐺";
+            if (score >= 500)  return "熟練の射手 🏹";
+            if (score >= 400)  return "期待のホープ ✨";
+            if (score >= 200)  return "駆け出しルーキー 🔰";
+            return "見習いチャレンジャー 🥚";
         }
 
         function endGame() {
@@ -736,23 +809,14 @@
                 const target = targets[hitIndex];
                 
                 // --- 予測射撃の計算 ---
-                // 弾の到達時間: 400ms (CSS transition)
-                // ゲームループ: 20ms間隔
-                // 弾が着くまでに進むフレーム数: 20 frames
-                // 進む距離(%): target.speed * 20
-                // 画面幅(px): window.innerWidth
-                const travelTimeFrames = 20; // 400ms / 20ms
+                const travelTimeFrames = 20; 
                 const predictedMovePercent = target.speed * travelTimeFrames;
                 const futureXPercent = target.x - predictedMovePercent;
-                // ピクセルに変換 (window幅ベース)
                 const futureXPixel = (futureXPercent / 100) * window.innerWidth;
-                const rect = target.el.getBoundingClientRect(); // Y座標用
+                const rect = target.el.getBoundingClientRect(); 
                 const targetY = rect.top + rect.height / 2;
 
-                // 大砲を向ける (未来位置へ)
                 rotateCannon(futureXPixel, targetY);
-
-                // 撃つ (未来位置へ)
                 shootBullet(futureXPixel, targetY); 
                 
                 setTimeout(() => {
@@ -817,7 +881,7 @@
                 const rect = target.el.getBoundingClientRect();
                 targetX = rect.left + rect.width / 2;
                 targetY = rect.top - 80; 
-                rotateCannon(targetX, targetY); // ミスの時もそっちを向く
+                rotateCannon(targetX, targetY); 
             } else {
                 targetX = window.innerWidth / 2;
                 targetY = window.innerHeight / 2 - 100;
