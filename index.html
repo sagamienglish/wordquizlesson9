@@ -404,14 +404,19 @@
         </div>
     </div>
 
-    <!-- ランキングオーバーレイ -->
+    <!-- ランキングオーバーレイ (修正: ステータス表示追加) -->
     <div id="ranking-overlay" class="overlay-screen hidden">
-        <div class="flex justify-between items-center w-full max-w-xl mb-4 px-2">
-            <h2 class="text-2xl font-bold text-yellow-400 japanese-font">🏆 ハイスコア</h2>
+        <div class="flex justify-between items-end w-full max-w-xl mb-4 px-2 border-b border-gray-600 pb-2">
+            <div>
+                <h2 class="text-3xl font-bold text-yellow-400 japanese-font mb-1">🏆 ハイスコア</h2>
+                <!-- ステータスバッジ -->
+                <span id="connection-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">接続確認中...</span>
+            </div>
             
             <!-- クラス絞り込み (削除ボタンは除去) -->
-            <div class="flex gap-2">
-                <select id="ranking-filter-class" onchange="applyRankingFilter()" class="bg-gray-700 text-white text-sm border border-gray-500 rounded px-2 py-1">
+            <div class="flex flex-col items-end gap-1">
+                <label class="text-xs text-gray-400">表示クラス</label>
+                <select id="ranking-filter-class" onchange="applyRankingFilter()" class="bg-gray-800 text-white text-sm border border-gray-500 rounded px-2 py-1">
                     <option value="all">全クラス</option>
                     <option value="1">1組</option>
                     <option value="2">2組</option>
@@ -428,8 +433,6 @@
                 </select>
             </div>
         </div>
-        
-        <div id="ranking-mode-display" class="text-xs text-gray-400 mb-2"></div>
         
         <div class="w-full max-w-xl bg-gray-800 rounded-lg p-4 max-h-[60vh] overflow-y-auto border border-gray-600">
             <table class="w-full text-left border-collapse">
@@ -537,8 +540,6 @@
                     console.error("Cloud setup error:", e);
                 }
             };
-            
-            // clearCloudRankingは削除（ボタン撤去のため）
         }
     </script>
 
@@ -601,10 +602,20 @@
 
         function renderRanking(scores, sourceLabel) {
             const list = document.getElementById('ranking-list');
-            const modeLabel = document.getElementById('ranking-mode-display');
+            const statusBadge = document.getElementById('connection-status');
             list.innerHTML = '';
             
-            modeLabel.innerText = "ソース: " + sourceLabel;
+            // 接続ステータス表示
+            if (sourceLabel.includes("クラウド")) {
+                statusBadge.innerHTML = "🟢 オンライン共有中";
+                statusBadge.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-200 border border-green-700 animate-pulse";
+            } else if (sourceLabel.includes("オフライン")) {
+                statusBadge.innerHTML = "⚪ オフライン (この端末のみ)";
+                statusBadge.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 border border-gray-500";
+            } else if (sourceLabel.includes("エラー")) {
+                statusBadge.innerText = sourceLabel;
+                statusBadge.className = "text-xs px-2 py-1 rounded bg-red-900 text-red-200 border border-red-700";
+            }
 
             if (scores.length === 0) {
                 list.innerHTML = '<tr><td colspan="6" class="text-center p-4">データがありません</td></tr>';
@@ -634,7 +645,10 @@
         function showRanking() {
             document.getElementById('ranking-overlay').classList.remove('hidden');
             const list = document.getElementById('ranking-list');
+            const statusBadge = document.getElementById('connection-status');
             list.innerHTML = '<tr><td colspan="6" class="text-center p-4">読み込み中...</td></tr>';
+            statusBadge.innerText = "接続確認中...";
+            statusBadge.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
 
             setTimeout(() => {
                 if (window.useFirebase && window.startFetchingCloudRanking) {
