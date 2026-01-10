@@ -188,6 +188,26 @@
             transform: translateY(2px);
             box-shadow: none;
         }
+        
+        /* 称号バッジ */
+        .title-badge {
+            background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+            border: 2px solid #fcd34d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            transform: rotate(-2deg);
+            /* animation: badge-pulse 2s infinite; これを削除して独自アニメーションへ */
+        }
+        
+        /* 穏やかな浮遊アニメーション */
+        .gentle-float {
+            animation: gentle-float 3s ease-in-out infinite;
+        }
+        @keyframes gentle-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col text-white">
@@ -333,34 +353,16 @@
     <!-- スタートオーバーレイ -->
     <div id="start-overlay" class="overlay-screen">
         <h2 class="text-4xl md:text-6xl font-bold text-yellow-400 japanese-font mb-2 drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">射的開始</h2>
-        <p class="mb-4 text-gray-300 text-center px-4">日本語を英語にして撃ち落とせ！<br>Lesson 9 Part 1~3</p>
         
-        <div class="flex flex-col gap-3 w-full max-w-sm px-4">
-            <!-- ユーザー入力 (名前とクラス) -->
-            <div class="flex gap-2">
-                <div class="flex flex-col w-1/3">
-                    <label class="text-sm text-gray-400 mb-1">クラス</label>
-                    <select id="class-select" class="bg-gray-800 text-white border border-gray-600 rounded px-2 py-2 text-lg">
-                        <option value="1">1組</option>
-                        <option value="2">2組</option>
-                        <option value="3">3組</option>
-                        <option value="4">4組</option>
-                        <option value="5">5組</option>
-                        <option value="6">6組</option>
-                        <option value="7">7組</option>
-                        <option value="8">8組</option>
-                        <option value="9">9組</option>
-                        <option value="10">10組</option>
-                        <option value="11">11組</option>
-                        <option value="12">12組</option>
-                    </select>
-                </div>
-                <div class="flex flex-col w-2/3">
-                    <label class="text-sm text-gray-400 mb-1">ニックネーム</label>
-                    <input type="text" id="username-input" class="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2 text-lg text-center" placeholder="名前" maxlength="10">
-                </div>
+        <!-- 現在の称号表示 (サイズ調整・アニメーション変更) -->
+        <div id="best-rank-display" class="mb-6 text-center gentle-float">
+            <div class="text-sm text-gray-300 mb-1">現在の最高称号</div>
+            <div id="current-title" class="title-badge text-xl md:text-2xl font-bold text-white japanese-font">
+                見習いチャレンジャー 🥚
             </div>
+        </div>
 
+        <div class="flex flex-col gap-3 w-full max-w-sm px-4">
             <!-- 設定：出題範囲 -->
             <div class="flex flex-col">
                  <label class="text-sm text-gray-400 mb-1">出題範囲</label>
@@ -393,68 +395,18 @@
                 </div>
             </div>
 
-            <button onclick="validateAndStart()" class="mt-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full text-xl shadow-[0_4px_0_rgb(153,27,27)] active:shadow-none active:translate-y-1 transition japanese-font">
+            <button onclick="startGame()" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full text-xl shadow-[0_4px_0_rgb(153,27,27)] active:shadow-none active:translate-y-1 transition japanese-font">
                 ゲームスタート
             </button>
-            
-            <!-- ランキングボタン -->
-            <button onclick="showRanking()" class="mt-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-full text-sm shadow shadow-yellow-800 transition japanese-font">
-                🏆 ランキングを見る
-            </button>
         </div>
-    </div>
 
-    <!-- ランキングオーバーレイ (修正: ステータス表示追加) -->
-    <div id="ranking-overlay" class="overlay-screen hidden">
-        <div class="flex justify-between items-end w-full max-w-xl mb-4 px-2 border-b border-gray-600 pb-2">
-            <div>
-                <h2 class="text-3xl font-bold text-yellow-400 japanese-font mb-1">🏆 ハイスコア</h2>
-                <!-- ステータスバッジ -->
-                <span id="connection-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">接続確認中...</span>
-            </div>
-            
-            <!-- クラス絞り込み (削除ボタンは除去) -->
-            <div class="flex flex-col items-end gap-1">
-                <label class="text-xs text-gray-400">表示クラス</label>
-                <select id="ranking-filter-class" onchange="applyRankingFilter()" class="bg-gray-800 text-white text-sm border border-gray-500 rounded px-2 py-1">
-                    <option value="all">全クラス</option>
-                    <option value="1">1組</option>
-                    <option value="2">2組</option>
-                    <option value="3">3組</option>
-                    <option value="4">4組</option>
-                    <option value="5">5組</option>
-                    <option value="6">6組</option>
-                    <option value="7">7組</option>
-                    <option value="8">8組</option>
-                    <option value="9">9組</option>
-                    <option value="10">10組</option>
-                    <option value="11">11組</option>
-                    <option value="12">12組</option>
-                </select>
-            </div>
+        <!-- ローカルランキング表示エリア -->
+        <div class="mt-6 w-full max-w-sm">
+            <h3 class="text-center text-yellow-400 font-bold mb-2 border-b border-gray-600 pb-1">Best Scores (Top 5)</h3>
+            <ul id="local-ranking-list" class="text-sm text-gray-300 space-y-1">
+                <!-- JSで生成 -->
+            </ul>
         </div>
-        
-        <div class="w-full max-w-xl bg-gray-800 rounded-lg p-4 max-h-[60vh] overflow-y-auto border border-gray-600">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="text-gray-400 border-b border-gray-600">
-                        <th class="p-2 w-10">#</th>
-                        <th class="p-2 w-16">Class</th>
-                        <th class="p-2">Name</th>
-                        <th class="p-2 w-20 text-right">Score</th>
-                        <th class="p-2">Title</th>
-                        <th class="p-2 text-right text-xs w-20">Date</th>
-                    </tr>
-                </thead>
-                <tbody id="ranking-list" class="text-white">
-                    <!-- JSで生成 -->
-                    <tr><td colspan="6" class="text-center p-4">読み込み中...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <button onclick="closeRanking()" class="mt-6 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-8 rounded-full">
-            閉じる
-        </button>
     </div>
 
     <!-- リザルトオーバーレイ -->
@@ -464,211 +416,160 @@
             <!-- JSで挿入 -->
         </div>
         <button onclick="resetGame()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-12 rounded-full text-xl shadow-[0_4px_0_rgb(153,27,27)] active:shadow-none active:translate-y-1 transition japanese-font">
-            もう一度遊ぶ
+            トップに戻る
         </button>
     </div>
 
-    <!-- Firebase / Local Storage Logic -->
-    <script type="module">
-        window.useFirebase = false;
-        
-        if (typeof __firebase_config !== 'undefined') {
-            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-            const { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-            const { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-
-            const firebaseConfig = JSON.parse(__firebase_config);
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-            let currentUser = null;
-            
-            const ensureAuth = async () => {
-                if (auth.currentUser) return auth.currentUser;
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    return auth.currentUser;
-                } catch (e) {
-                    console.error("Auth error:", e);
-                    window.useFirebase = false;
-                    throw e;
-                }
-            };
-            
-            ensureAuth().then(() => {
-                window.useFirebase = true;
-            }).catch(e => console.log("Falling back to local storage"));
-
-            window.saveScoreToCloud = async (username, classId, score) => {
-                if (!window.useFirebase) return;
-                try {
-                    await ensureAuth();
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                    await addDoc(colRef, {
-                        username: username,
-                        classId: classId,
-                        score: score,
-                        timestamp: new Date().toISOString()
-                    });
-                } catch (e) {
-                    console.error("Cloud save failed:", e);
-                }
-            };
-
-            window.unsubscribeCloudRanking = null;
-
-            window.startFetchingCloudRanking = async (renderCallback) => {
-                if (!window.useFirebase) return;
-                try {
-                    await ensureAuth();
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                    window.unsubscribeCloudRanking = onSnapshot(colRef, (snapshot) => {
-                        const scores = [];
-                        snapshot.forEach(doc => scores.push(doc.data()));
-                        renderCallback(scores, "クラウド (みんなの記録)");
-                    }, (error) => {
-                        console.error("Cloud fetch error:", error);
-                        renderCallback([], "エラー: " + error.code);
-                    });
-                } catch (e) {
-                    console.error("Cloud setup error:", e);
-                }
-            };
-        }
-    </script>
-
     <script>
-        // --- ローカルストレージ & 統合ロジック ---
-        
-        let currentRawScores = [];
-        let currentSourceLabel = "";
+        // --- データ管理ロジック (ローカルストレージのみ) ---
+        const STORAGE_KEY = 'shooting_game_scores_v2'; // 名前なしバージョンとしてキー変更
 
-        function saveScoreLocal(username, classId, score) {
-            const data = JSON.parse(localStorage.getItem('shooting_game_scores') || '[]');
+        function saveScoreLocal(score) {
+            // 単純にスコアと日付の配列として保存
+            const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             data.push({
-                username: username,
-                classId: classId,
                 score: score,
                 timestamp: new Date().toISOString()
             });
+            // ソートして上位10件だけ残す
             data.sort((a, b) => b.score - a.score);
-            const limitData = data.slice(0, 300);
-            localStorage.setItem('shooting_game_scores', JSON.stringify(limitData));
+            const top10 = data.slice(0, 10);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(top10));
         }
 
-        function getRankingLocal() {
-            return JSON.parse(localStorage.getItem('shooting_game_scores') || '[]');
+        function getLocalScores() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         }
 
-        async function saveScore(username, classId, score) {
-            saveScoreLocal(username, classId, score);
-            if (window.useFirebase && window.saveScoreToCloud) {
-                await window.saveScoreToCloud(username, classId, score);
-            }
-        }
-
-        function onRankingDataReceived(rawScores, sourceLabel) {
-            currentRawScores = rawScores;
-            currentSourceLabel = sourceLabel;
-            applyRankingFilter(); 
-        }
-
-        function applyRankingFilter() {
-            const filterClass = document.getElementById('ranking-filter-class').value;
+        function renderLocalRanking() {
+            const list = document.getElementById('local-ranking-list');
+            const data = getLocalScores();
             
-            let filtered = currentRawScores;
-            if (filterClass !== 'all') {
-                filtered = currentRawScores.filter(s => String(s.classId) === String(filterClass));
-            }
-
-            const bestScores = {};
-            filtered.forEach(s => {
-                if (!bestScores[s.username] || bestScores[s.username].score < s.score) {
-                    bestScores[s.username] = s;
-                }
-            });
-
-            const finalScores = Object.values(bestScores);
-            finalScores.sort((a, b) => b.score - a.score);
-
-            renderRanking(finalScores, currentSourceLabel);
-        }
-
-        function renderRanking(scores, sourceLabel) {
-            const list = document.getElementById('ranking-list');
-            const statusBadge = document.getElementById('connection-status');
             list.innerHTML = '';
-            
-            // 接続ステータス表示
-            if (sourceLabel.includes("クラウド")) {
-                statusBadge.innerHTML = "🟢 オンライン共有中";
-                statusBadge.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-200 border border-green-700 animate-pulse";
-            } else if (sourceLabel.includes("オフライン")) {
-                statusBadge.innerHTML = "⚪ オフライン (この端末のみ)";
-                statusBadge.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 border border-gray-500";
-            } else if (sourceLabel.includes("エラー")) {
-                statusBadge.innerText = sourceLabel;
-                statusBadge.className = "text-xs px-2 py-1 rounded bg-red-900 text-red-200 border border-red-700";
-            }
-
-            if (scores.length === 0) {
-                list.innerHTML = '<tr><td colspan="6" class="text-center p-4">データがありません</td></tr>';
+            if (data.length === 0) {
+                list.innerHTML = '<li class="text-center text-gray-500">- No Data -</li>';
+                updateBestRankDisplay(0); // データなしなら初期称号
                 return;
             }
 
-            scores.slice(0, 50).forEach((s, index) => {
-                const date = s.timestamp ? new Date(s.timestamp).toLocaleDateString() : '-';
-                const rankClass = index === 0 ? 'text-yellow-400 font-bold' : (index === 1 ? 'text-gray-300 font-bold' : (index === 2 ? 'text-orange-400 font-bold' : ''));
-                const title = getRank(s.score);
-                const classDisplay = s.classId ? `${s.classId}組` : '-';
-
-                const row = `
-                    <tr class="border-b border-gray-700 hover:bg-gray-700">
-                        <td class="p-2 ${rankClass}">${index + 1}</td>
-                        <td class="p-2 text-sm text-gray-300">${classDisplay}</td>
-                        <td class="p-2 font-bold truncate max-w-[100px]">${s.username}</td>
-                        <td class="p-2 text-right font-mono text-lg">${s.score}</td>
-                        <td class="p-2 text-xs truncate max-w-[120px] text-yellow-200">${title}</td>
-                        <td class="p-2 text-right text-xs text-gray-500">${date}</td>
-                    </tr>
+            // Top 5 表示
+            data.slice(0, 5).forEach((item, index) => {
+                const date = new Date(item.timestamp);
+                const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                const rankIcon = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `${index + 1}.`));
+                const colorClass = index === 0 ? 'text-yellow-300 font-bold' : 'text-gray-300';
+                
+                const li = document.createElement('li');
+                li.className = `flex justify-between ${colorClass}`;
+                li.innerHTML = `
+                    <span>${rankIcon} ${item.score}pts</span>
+                    <span class="text-xs text-gray-500">${dateStr}</span>
                 `;
-                list.insertAdjacentHTML('beforeend', row);
+                list.appendChild(li);
             });
+
+            // ハイスコアに基づいて称号更新
+            updateBestRankDisplay(data[0].score);
         }
 
-        function showRanking() {
-            document.getElementById('ranking-overlay').classList.remove('hidden');
-            const list = document.getElementById('ranking-list');
-            const statusBadge = document.getElementById('connection-status');
-            list.innerHTML = '<tr><td colspan="6" class="text-center p-4">読み込み中...</td></tr>';
-            statusBadge.innerText = "接続確認中...";
-            statusBadge.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
-
-            setTimeout(() => {
-                if (window.useFirebase && window.startFetchingCloudRanking) {
-                    window.startFetchingCloudRanking(onRankingDataReceived);
-                } else {
-                    const localScores = getRankingLocal();
-                    onRankingDataReceived(localScores, "この端末のみ (オフライン)");
-                }
-            }, 500);
+        function updateBestRankDisplay(highScore) {
+            const title = getRank(highScore);
+            const el = document.getElementById('current-title');
+            el.innerText = title;
         }
 
-        function closeRanking() {
-            document.getElementById('ranking-overlay').classList.add('hidden');
-            if (window.unsubscribeCloudRanking) {
-                window.unsubscribeCloudRanking();
-                window.unsubscribeCloudRanking = null;
-            }
+        // --- ゲームロジック ---
+
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const part = document.getElementById('part-selector').value;
+            const modeRadios = document.getElementsByName('game-mode');
+            for(const radio of modeRadios) if(radio.checked) gameMode = radio.value;
+
+            if (part === 'all') currentWords = [...wordData.part1, ...wordData.part2, ...wordData.part3];
+            else currentWords = [...wordData[part]];
+            
+            score = 0;
+            timeLeft = 60;
+            targets = [];
+            targetsContainer.innerHTML = '';
+            effectsContainer.innerHTML = '';
+            scoreEl.innerText = score;
+            timeEl.innerText = timeLeft;
+            input.value = '';
+            input.focus();
+            cannonWrapper.style.transform = 'rotate(0deg)';
+            document.getElementById('start-overlay').style.display = 'none';
+            document.getElementById('result-overlay').style.display = 'none';
+            isGameRunning = true;
+            messageEl.innerText = "";
+
+            clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 20); 
+            
+            clearInterval(spawnInterval);
+            const spawnRate = 4000; 
+            spawnInterval = setInterval(spawnTarget, spawnRate);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timeEl.innerText = timeLeft;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+            
+            if(isBgmOn) startBGM();
+
+            if(isVirtualKeyboardOn) input.setAttribute('readonly', 'readonly');
         }
 
-        // --- ゲームデータ (Lesson 9) ---
+        function resetGame() {
+            document.getElementById('result-overlay').style.display = 'none';
+            document.getElementById('start-overlay').style.display = 'flex';
+            // ランキング再描画
+            renderLocalRanking();
+        }
+
+        function getRank(score) {
+            if (score >= 2000) return "Lv.10 伝説の的屋王 🎆👑";
+            if (score >= 1800) return "Lv.9 奇跡のスナイパー 🎯✨";
+            if (score >= 1500) return "Lv.8 夏祭りの覇者 🏮🦁";
+            if (score >= 1200) return "Lv.7 射的マスター 🔥🔫";
+            if (score >= 1000) return "Lv.6 お祭り名人 👺🏮";
+            if (score >= 800)  return "Lv.5 凄腕ハンター 🐺";
+            if (score >= 600)  return "Lv.4 熟練の射手 🏹";
+            if (score >= 400)  return "Lv.3 期待のホープ ✨";
+            if (score >= 200)  return "Lv.2 駆け出しルーキー 🔰";
+            return "Lv.1 見習いチャレンジャー 🥚";
+        }
+
+        function endGame() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(spawnInterval);
+            clearInterval(timerInterval);
+            if(isListening) toggleSpeech();
+            stopBGM();
+            
+            // スコア保存
+            saveScoreLocal(score);
+
+            const rank = getRank(score);
+            const overlay = document.getElementById('result-overlay');
+            overlay.style.display = 'flex';
+            
+            const content = document.getElementById('result-content');
+            content.innerHTML = `
+                <div class="text-xl mb-2">今回のスコア</div>
+                <div class="text-yellow-400 text-6xl font-bold font-mono mb-4">${score}</div>
+                <div class="text-2xl mt-2 bg-red-900 bg-opacity-50 px-6 py-2 rounded-lg border border-red-500 inline-block">
+                    称号: <span class="text-white font-bold japanese-font">${rank}</span>
+                </div>
+            `;
+        }
+
+        // --- 以下、既存のゲームロジック・変数定義など ---
+        
         const wordData = {
             part1: [
                 { ja: 'ニュースキャスター', en: 'newscaster' },
@@ -731,8 +632,6 @@
         let bgmInterval;
         let gameMode = 'ja_to_en'; 
         let isVirtualKeyboardOn = false;
-        let currentPlayerName = "Guest";
-        let currentPlayerClass = "1"; 
         
         // DOM要素
         const gameArea = document.getElementById('game-area');
@@ -823,13 +722,11 @@
             
             if (isVirtualKeyboardOn) {
                 kb.classList.remove('hidden');
-                // OSキーボードを出さないためにreadonlyにする
                 input.setAttribute('readonly', 'readonly');
             } else {
                 kb.classList.add('hidden');
                 input.removeAttribute('readonly');
             }
-            // レイアウト再計算のためにフォーカスをあえて外す
             input.blur();
         }
 
@@ -841,7 +738,6 @@
             } else {
                 input.value += key;
             }
-            // 入力中もOSキーボードを出さない
             if(isVirtualKeyboardOn) {
                 input.focus();
             }
@@ -990,121 +886,6 @@
                 osc.start(t);
                 osc.stop(t + 0.2);
             }
-        }
-
-        // --- UI Logic & Game Flow ---
-
-        function validateAndStart() {
-            const nameInput = document.getElementById('username-input');
-            const classInput = document.getElementById('class-select');
-            
-            const name = nameInput.value.trim();
-            const classVal = classInput.value;
-            
-            if (!name) {
-                alert("ニックネームを入力してください！");
-                return;
-            }
-
-            // 不適切な言葉チェック
-            const badWords = ['バカ', 'ばか', 'アホ', 'あほ', '死ね', 'しね', '殺', 'sex', 'fuck', 'shit', 'bitch', 'kill', '変態', 'うんこ', 'チンコ', 'マンコ']; 
-            const checkName = name.toLowerCase();
-            for (const word of badWords) {
-                if (checkName.includes(word)) {
-                    alert("不適切な言葉が含まれています。別の名前にしてください。");
-                    return;
-                }
-            }
-
-            currentPlayerName = name;
-            currentPlayerClass = classVal;
-            startGame();
-        }
-
-        function startGame() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const part = document.getElementById('part-selector').value;
-            const modeRadios = document.getElementsByName('game-mode');
-            for(const radio of modeRadios) if(radio.checked) gameMode = radio.value;
-
-            if (part === 'all') currentWords = [...wordData.part1, ...wordData.part2, ...wordData.part3];
-            else currentWords = [...wordData[part]];
-            
-            score = 0;
-            timeLeft = 60;
-            targets = [];
-            targetsContainer.innerHTML = '';
-            effectsContainer.innerHTML = '';
-            scoreEl.innerText = score;
-            timeEl.innerText = timeLeft;
-            input.value = '';
-            input.focus();
-            cannonWrapper.style.transform = 'rotate(0deg)';
-            document.getElementById('start-overlay').style.display = 'none';
-            document.getElementById('result-overlay').style.display = 'none';
-            isGameRunning = true;
-            messageEl.innerText = "";
-
-            clearInterval(gameInterval);
-            gameInterval = setInterval(updateGame, 20); 
-            
-            clearInterval(spawnInterval);
-            const spawnRate = 4000; 
-            spawnInterval = setInterval(spawnTarget, spawnRate);
-
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timeEl.innerText = timeLeft;
-                if (timeLeft <= 0) endGame();
-            }, 1000);
-            
-            if(isBgmOn) startBGM();
-
-            if(isVirtualKeyboardOn) input.setAttribute('readonly', 'readonly');
-        }
-
-        function resetGame() {
-            document.getElementById('result-overlay').style.display = 'none';
-            document.getElementById('start-overlay').style.display = 'flex';
-        }
-
-        function getRank(score) {
-            // スピードボーナスでスコアが増えやすくなったため、ランク基準を少し引き上げ
-            if (score >= 2000) return "伝説の的屋王 🎆👑";
-            if (score >= 1800) return "奇跡のスナイパー 🎯✨";
-            if (score >= 1500) return "夏祭りの覇者 🏮🦁";
-            if (score >= 1200) return "射的マスター 🔥🔫";
-            if (score >= 1000) return "お祭り名人 👺🏮";
-            if (score >= 800)  return "凄腕ハンター 🐺";
-            if (score >= 600)  return "熟練の射手 🏹";
-            if (score >= 400)  return "期待のホープ ✨";
-            if (score >= 200)  return "駆け出しルーキー 🔰";
-            return "見習いチャレンジャー 🥚";
-        }
-
-        function endGame() {
-            isGameRunning = false;
-            clearInterval(gameInterval);
-            clearInterval(spawnInterval);
-            clearInterval(timerInterval);
-            if(isListening) toggleSpeech();
-            stopBGM();
-            
-            const rank = getRank(score);
-            saveScore(currentPlayerName, currentPlayerClass, score);
-
-            const overlay = document.getElementById('result-overlay');
-            overlay.style.display = 'flex';
-            
-            const content = document.getElementById('result-content');
-            content.innerHTML = `
-                <div class="text-2xl mb-2">${currentPlayerClass}組 ${currentPlayerName}さんのスコア</div>
-                <div class="text-yellow-400 text-6xl font-bold font-mono mb-4">${score}</div>
-                <div class="text-2xl mt-2 bg-red-900 bg-opacity-50 px-6 py-2 rounded-lg border border-red-500 inline-block">
-                    称号: <span class="text-white font-bold japanese-font">${rank}</span>
-                </div>
-            `;
         }
 
         function spawnTarget() {
@@ -1314,6 +1095,11 @@
         document.addEventListener('keyup', (e) => {
             if (e.key === 'Alt') document.querySelectorAll('.debug-hint').forEach(el => el.style.opacity = '0');
         });
+
+        // ページロード時に初期表示更新
+        window.onload = () => {
+            renderLocalRanking();
+        }
     </script>
 </body>
 </html>
