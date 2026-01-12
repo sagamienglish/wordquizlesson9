@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>夏祭り 英単語射的 (Lesson 9)</title>
+    <title>英単語射的 (Lesson 9)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=M_PLUS_Rounded_1c:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -197,7 +197,6 @@
             padding: 0.5rem 1.5rem;
             border-radius: 9999px;
             transform: rotate(-2deg);
-            /* animation: badge-pulse 2s infinite; これを削除して独自アニメーションへ */
         }
         
         /* 穏やかな浮遊アニメーション */
@@ -422,16 +421,14 @@
 
     <script>
         // --- データ管理ロジック (ローカルストレージのみ) ---
-        const STORAGE_KEY = 'shooting_game_scores_v2'; // 名前なしバージョンとしてキー変更
+        const STORAGE_KEY = 'shooting_game_scores_lesson9'; 
 
         function saveScoreLocal(score) {
-            // 単純にスコアと日付の配列として保存
             const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             data.push({
                 score: score,
                 timestamp: new Date().toISOString()
             });
-            // ソートして上位10件だけ残す
             data.sort((a, b) => b.score - a.score);
             const top10 = data.slice(0, 10);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(top10));
@@ -452,7 +449,6 @@
                 return;
             }
 
-            // Top 5 表示
             data.slice(0, 5).forEach((item, index) => {
                 const date = new Date(item.timestamp);
                 const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -468,7 +464,6 @@
                 list.appendChild(li);
             });
 
-            // ハイスコアに基づいて称号更新
             updateBestRankDisplay(data[0].score);
         }
 
@@ -568,8 +563,7 @@
             `;
         }
 
-        // --- 以下、既存のゲームロジック・変数定義など ---
-        
+        // --- 単語データ (Lesson 9) ---
         const wordData = {
             part1: [
                 { ja: 'ニュースキャスター', en: 'newscaster' },
@@ -972,6 +966,12 @@
                 
                 // --- スコア計算 (Time Bonus) ---
                 let points = 50 + Math.floor(target.x * 2);
+                
+                // 初心者モード（視写）の場合はスコア半分
+                if (gameMode === 'en_to_en') {
+                    points = Math.floor(points * 0.5);
+                }
+
                 score += points;
                 scoreEl.innerText = score;
 
